@@ -1,17 +1,22 @@
-//===========================================
+//==============================================================================
 import credentials from '../../fixtures/login.json';
 
-describe('Arithmetic Transformation - Fixture Driven', () => {
+describe('Filter Transformation', () => {
 
   let data;
+  let filterData;
 
   before(() => {
     cy.fixture('etl/arithmetic').then((fixtureData) => {
       data = fixtureData;
     });
+
+    cy.fixture('etl/filter').then((fixtureData) => {
+      filterData = fixtureData;
+    });
   });
 
-  it('Create arithmetic transformation using fixture data', () => {
+  it('Create filter transformation using fixture data', () => {
 
     // ================= LOGIN =================
     cy.visit(credentials.URL);
@@ -34,7 +39,7 @@ describe('Arithmetic Transformation - Fixture Driven', () => {
       .select(data.connectionType);
 
     cy.get('a[href="/transformation"]').click();
-//====================================================================================================    
+
     cy.get('button.bg-\\[\\#8d77ba\\]').click();
     cy.wait(1000);
     // Zoom out more to make all transformation nodes visible
@@ -149,63 +154,63 @@ cy.wait(2000);
       .find('select')
       .select(data.source.mappingSource);
 
-   cy.contains('button', 'Transform').realClick(); // true user-like click
-cy.wait(2000);
+   
+    cy.contains('button', 'Transform').realClick();
+    cy.wait(2000);
 
-    // ================= TRANSFORMATION =================
-    cy.get('select.w-full.p-2.text-sm')
-      .select(data.transformation.type);
-
-    // Left column
-    cy.get('div.css-1y76x9s-control').eq(0).within(() => {
-      cy.get('input')
-        .type(`${data.transformation.leftColumn}{enter}`, { force: true });
-    });
+    // ================= FILTER TRANSFORMATION =================
 
     // Operator
-    cy.contains('Operator')
+    cy.get('select.w-full.p-2.text-sm')
+      .should('be.visible')
+      .select(filterData.operator);
+
+    // Column selection
+    cy.get('div.text-sm.css-b62m3t-container')
+      .eq(0)
+      .click()
+      .type(filterData.column);
+
+    cy.get('div[class*="-menu"] div[class*="-option"]')
+      .contains(new RegExp(`^${filterData.column}\\b`, 'i'))
+      .click({ force: true });
+
+    // Filter type
+    cy.contains('div', 'Select filter type')
+      .find('select')
+      .select(filterData.filterType);
+
+    // Operator
+    cy.contains('div', 'Select operator')
       .parent()
-      .find('div.css-1y76x9s-control')
-      .within(() => {
-        cy.get('input')
-          .type(`${data.transformation.operator}{enter}`, { force: true });
-      });
+      .find('select')
+      .select(filterData.comparisonOperator);
 
-    // Right column
-    cy.get('div.css-1y76x9s-control').eq(1).within(() => {
-      cy.get('input')
-        .type(`${data.transformation.rightColumn}{enter}`, { force: true });
-    });
+    // Value
+    cy.get('input[placeholder="Enter integer value"][type="number"]')
+      .clear()
+      .type(filterData.value.toString())
+      .should('have.value', filterData.value.toString());
 
 
-    cy.get('div.css-1y76x9s-control').last().click();
 
-// Wait for the dropdown to render and select "Add New +"
-cy.get('div[id^="react-select-"][id$="-listbox"]')
-  .last()
-  .within(() => {
-    cy.contains('div', 'Add New +').click({ force: true });
-  });
+      // Apply
+    cy.contains('button', 'Apply')
+      .should('be.enabled')
+      .click();
 
 
-cy.wait(1000);
-  cy.get('input[placeholder="Enter new column name"]')
-  .eq(0)   // first input
-  .type(data.target.newColumnName, { force: true });
 
 
-    //===================================================
- cy.contains('button', 'OK').first().click({ force: true });
-cy.wait(1000);
-    // ================= SAVE =================
-    cy.contains('Apply').click();
-    cy.contains('Target Mapping').click();
+          cy.contains('Target Mapping').click();
     cy.wait(1000);
 cy.contains('button', 'Confirm Mapping').click({ force: true });
 cy.wait(1000);
 cy.get('input.form-checkbox').first().click({ force: true });
 cy.wait(1000);
 cy.contains('button', 'Save').click();
+cy.wait(2000);
+
     // Function to check first row status
 const checkFirstRowStatus = () => 
   cy.get('table tbody tr').first().find('td').eq(5).find('span');
@@ -217,7 +222,7 @@ const waitForReadyToRun = (timeout = 60000, interval = 5000) => {
   const check = () => {
     checkFirstRowStatus().then($span => {
       if ($span.text().trim() === 'Ready to run') {
-        cy.log('Status is Ready to run ✅');
+        cy.log('Status is Ready to run ');
         return;
       }
 
@@ -272,16 +277,12 @@ const checkStatus = () => {
         cy.log(`⏳ Status not Success yet, retrying (${attempts})...`);
         cy.wait(2000).then(checkStatus);
       } else {
-        throw new Error("⛔ Timeout: Status did not become Success within max retries");
+        throw new Error("Timeout: Status did not become Success within max retries");
       }
     });
 };
 
 // Usage in your test after triggering the ETL/purge
 checkStatus();
-
-
-
   });
 });
-

@@ -1,17 +1,21 @@
-//===========================================
 import credentials from '../../fixtures/login.json';
 
-describe('Arithmetic Transformation - Fixture Driven', () => {
+describe('Restrict Column Transformation', () => {
 
   let data;
+  let rcolumnData;
 
   before(() => {
-    cy.fixture('etl/arithmetic').then((fixtureData) => {
+    cy.fixture('etl/arithmetic').then(fixtureData => {
       data = fixtureData;
+    });
+
+    cy.fixture('etl/Rcolumn').then(fixtureData => {
+      rcolumnData = fixtureData;
     });
   });
 
-  it('Create arithmetic transformation using fixture data', () => {
+  it('Create Restrict Column transformation using fixture data', () => {
 
     // ================= LOGIN =================
     cy.visit(credentials.URL);
@@ -33,8 +37,8 @@ describe('Arithmetic Transformation - Fixture Driven', () => {
     cy.get('select.w-44.text-slate-500')
       .select(data.connectionType);
 
-    cy.get('a[href="/transformation"]').click();
-//====================================================================================================    
+   cy.get('a[href="/transformation"]').click();
+
     cy.get('button.bg-\\[\\#8d77ba\\]').click();
     cy.wait(1000);
     // Zoom out more to make all transformation nodes visible
@@ -149,63 +153,81 @@ cy.wait(2000);
       .find('select')
       .select(data.source.mappingSource);
 
-   cy.contains('button', 'Transform').realClick(); // true user-like click
-cy.wait(2000);
+   
+    cy.contains('button', 'Transform').realClick();
+    cy.wait(2000);
 
-    // ================= TRANSFORMATION =================
+    // ================= OPERATOR =================
     cy.get('select.w-full.p-2.text-sm')
-      .select(data.transformation.type);
+      .select(rcolumnData.operator);
 
-    // Left column
-    cy.get('div.css-1y76x9s-control').eq(0).within(() => {
-      cy.get('input')
-        .type(`${data.transformation.leftColumn}{enter}`, { force: true });
+    cy.get('select.w-full.p-2.text-sm')
+      .eq(1)
+      .select(rcolumnData.selectMode);
+
+    // ---------- Helper ----------
+    const selectReactOption = (value) => {
+      cy.get('div.css-osg2iu').click();
+      cy.get('input[id*="react-select"][id$="-input"]')
+        .type(value, { force: true });
+
+      cy.get('div[class*="-menu"] div[class*="-option"]', { timeout: 8000 })
+        .contains(new RegExp(`^${value}\\b`, 'i'))
+        .click({ force: true });
+    };
+
+    // ---------- Restrict Columns ----------
+    rcolumnData.restrictColumns.forEach(col => {
+      selectReactOption(col);
     });
 
-    // Operator
-    cy.contains('Operator')
-      .parent()
-      .find('div.css-1y76x9s-control')
-      .within(() => {
-        cy.get('input')
-          .type(`${data.transformation.operator}{enter}`, { force: true });
-      });
 
-    // Right column
-    cy.get('div.css-1y76x9s-control').eq(1).within(() => {
-      cy.get('input')
-        .type(`${data.transformation.rightColumn}{enter}`, { force: true });
-    });
+    cy.get('body').click(0, 0);
+    cy.contains('button', rcolumnData.applyButton).click();
 
+    // ================= ADD TRANSFORMATION =================
+    if (rcolumnData.addTransformation) {
+      cy.contains('button', 'Add Transformation').click();
+    }
 
-    cy.get('div.css-1y76x9s-control').last().click();
+    cy.get('select.w-full.p-2.text-black.text-xs.border')
+      .eq(1)
+      .select(rcolumnData.targetConnection);
 
-// Wait for the dropdown to render and select "Add New +"
-cy.get('div[id^="react-select-"][id$="-listbox"]')
-  .last()
-  .within(() => {
-    cy.contains('div', 'Add New +').click({ force: true });
-  });
+    cy.get('select.bg-white.rounded.text-gray-800')
+      .eq(2)
+      .select(rcolumnData.transformationType);
 
+    // ================= SORT =================
+    cy.contains('span', 'Add Column to Sort By').click();
+    cy.contains('button', rcolumnData.sort.orderByColumn).click();
 
-cy.wait(1000);
-  cy.get('input[placeholder="Enter new column name"]')
-  .eq(0)   // first input
-  .type(data.target.newColumnName, { force: true });
+    if (rcolumnData.sort.order === 'ASC') {
+      cy.get('button.bg-blue-100.text-blue-700').click();
+    } else {
+      cy.get('button.bg-purple-100.text-purple-700').click();
+    }
 
 
-    //===================================================
- cy.contains('button', 'OK').first().click({ force: true });
-cy.wait(1000);
-    // ================= SAVE =================
-    cy.contains('Apply').click();
-    cy.contains('Target Mapping').click();
+    // Apply
+    cy.contains('button', 'Apply')
+      .should('be.enabled')
+      .click();
+
+
+
+
+          cy.contains('Target Mapping').click();
     cy.wait(1000);
-cy.contains('button', 'Confirm Mapping').click({ force: true });
+
+
+    cy.contains('button', 'Confirm Mapping').click({ force: true });
 cy.wait(1000);
 cy.get('input.form-checkbox').first().click({ force: true });
 cy.wait(1000);
 cy.contains('button', 'Save').click();
+cy.wait(2000);
+
     // Function to check first row status
 const checkFirstRowStatus = () => 
   cy.get('table tbody tr').first().find('td').eq(5).find('span');
@@ -272,7 +294,7 @@ const checkStatus = () => {
         cy.log(`⏳ Status not Success yet, retrying (${attempts})...`);
         cy.wait(2000).then(checkStatus);
       } else {
-        throw new Error("⛔ Timeout: Status did not become Success within max retries");
+        throw new Error(" Timeout: Status did not become Success within max retries");
       }
     });
 };
@@ -280,8 +302,5 @@ const checkStatus = () => {
 // Usage in your test after triggering the ETL/purge
 checkStatus();
 
-
-
   });
-});
-
+  });

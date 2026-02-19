@@ -1,6 +1,6 @@
 /// <reference types="cypress" />
 
-describe('Login page', () => {
+describe('String Transformation', () => {
   let credentials;
 
   before(() => {
@@ -638,7 +638,6 @@ cy.wait(1000);
     //cy.get('div.flex.justify-between.items-center').click({ force: true });
     cy.contains('button', 'Run').click({ force: true });
     cy.wait(1000);
-    
     cy.screenshot('Quarry executed successfully');
 
 // scroll the output area into view first
@@ -653,10 +652,111 @@ cy.contains('Output').parent().find('div').then($divs => {
   cy.wrap(scrollable).scrollTo('25%', 0, { duration: 600 });
 });
 
-
-
-
-
-
   });
+});
+
+//==================================================json file=======================================
+
+
+/// <reference types="cypress" />
+
+describe('Date Transformation', () => {
+  let credentials;
+  let conn;      // from Connection.json
+  let column;    // from Column.json
+
+  before(() => {
+    cy.fixture('ETL/login').then(d => { credentials = d; });
+    cy.fixture('ETL/Connections').then(d => { conn = d; });
+    cy.fixture('ETL/Date').then(d => { column = d; });
+  });
+
+  it('Logs into Tantor portal and performs migration creation', () => {
+    Cypress.on('uncaught:exception', () => false);
+
+    // ------------------ Login ------------------
+    cy.visit(credentials.url, { failOnStatusCode: false });
+    cy.get('#username').should('be.visible').type(credentials.username);
+    cy.get('#password').should('be.visible').type(credentials.password);
+    cy.get('button[type="submit"]').click();
+    cy.url({ timeout: 10000 }).should('include', '/dashboard');
+
+    // ------------------ Navigation ------------------
+    cy.get('a[href="/dashboard"]').click();
+    cy.wait(1000);
+    cy.get('a[href="/connections"]').click();
+    cy.wait(1000);
+    cy.get('select.w-44.text-slate-500').select('shiva');
+    cy.wait(1000);
+    cy.get('a[href="/transformation"]').click();
+    cy.wait(1000);
+
+    // ------------------ Canvas nodes ------------------
+    cy.get('button.bg-\\[\\#8d77ba\\]').click();
+    for (let i = 0; i < 8; i++) {
+      cy.get('button.react-flow__controls-button.react-flow__controls-zoomout').click();
+      cy.wait(200);
+    }
+    cy.dragSource({x:400,y:20});
+    cy.dragTransformation({x:50,y:800});
+    cy.dragTarget({x:700,y:400});
+
+    // ---- connect nodes (unchanged) ----
+    cy.get('[data-id="node_0-null-source"]').trigger('mousedown',{button:0,force:true}).wait(200);
+    cy.get('[data-id="node_1-null-target"]').trigger('mousemove',{force:true}).wait(200)
+      .trigger('mouseover',{force:true}).wait(100).trigger('mouseup',{force:true});
+    cy.wait(1000);
+
+    cy.get('[data-id="node_1-null-source"]').trigger('mousedown',{button:0,force:true}).wait(200);
+    cy.get('[data-id="node_2-null-target"]').trigger('mousemove',{force:true}).wait(200)
+      .trigger('mouseover',{force:true}).wait(100).trigger('mouseup',{force:true});
+    cy.wait(1000);
+
+    cy.get('[data-id="node_2-null-source"]').trigger('mousedown',{button:0,force:true}).wait(200);
+    cy.get('[data-id="node_3-null-target"]').trigger('mousemove',{force:true}).wait(200)
+      .trigger('mouseover',{force:true}).wait(100).trigger('mouseup',{force:true});
+    cy.wait(1000);
+
+    // ------------------ Source configuration ------------------
+    cy.contains('button','Select source type').click();
+    cy.contains('Database').click({force:true});
+
+    cy.contains('button','Select connection').click();
+    cy.get('input[placeholder="Search connections..."]').type(conn.sourceConnection);
+    cy.contains('div.p-2.text-\\[11px\\].text-black.cursor-pointer.hover\\:bg-gray-100', conn.sourceConnection).click();
+
+    cy.contains('button','Select schema').click();
+    cy.get('input[placeholder="Search schemas..."]').type(conn.sourceSchema);
+    cy.contains('div.p-2.text-\\[11px\\].text-black.cursor-pointer.hover\\:bg-gray-100', conn.sourceSchema).click();
+
+    cy.contains('button','Select table').click();
+    cy.get('input[placeholder="Search tables..."]').type(conn.sourcetable);
+    cy.contains('div.p-2.text-\\[11px\\].text-black.cursor-pointer.hover\\:bg-gray-100', conn.sourcetable).click();
+
+    cy.get('input[type="checkbox"]').eq(0).click();
+
+    // ------------------ Target configuration ------------------
+    cy.contains('button','Select connection').click();
+    cy.get('input[placeholder="Search connections..."]').type(conn.targetConnection);
+    cy.contains('div.p-2.text-\\[11px\\].text-black.cursor-pointer.hover\\:bg-gray-100', conn.targetConnection).click();
+
+    cy.contains('button','Select schema').click();
+    cy.get('input[placeholder="Search schemas..."]').type(conn.targetSchema);
+    cy.contains('div.p-2.text-\\[11px\\].text-black.cursor-pointer.hover\\:bg-gray-100', conn.targetSchema).click();
+
+    cy.contains('button','Select table').click();
+    cy.get('input[placeholder="Search tables..."]').type(conn.targetTable);
+    cy.contains('div.p-2.text-\\[11px\\].text-black.cursor-pointer.hover\\:bg-gray-100', conn.targetTable).click();
+
+    cy.contains('label','Select Source for Mapping')
+      .parent()
+      .find('select')
+      .select(conn.sourceAlias)
+      .should('have.value', 'node_1');
+
+    // ------------------ Transform ------------------
+    cy.contains('button','Transform').realClick();
+
+
+    });
 });
